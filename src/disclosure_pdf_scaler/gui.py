@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         file_row.addWidget(source_label, 1)
         layout.addLayout(file_row)
 
-        pages = QFormLayout()
+        pages_form = QFormLayout()
         page_row = QHBoxLayout()
         start_page = QSpinBox()
         start_page.setObjectName("startPageSpinBox")
@@ -68,8 +68,8 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         page_row.addWidget(QLabel("至"))
         page_row.addWidget(end_page)
         page_row.addStretch()
-        pages.addRow("参与缩放的页面", page_row)
-        layout.addLayout(pages)
+        pages_form.addRow("参与缩放的页面", page_row)
+        layout.addLayout(pages_form)
 
         output_row = QHBoxLayout()
         choose_output = QPushButton("选择输出位置")
@@ -82,12 +82,12 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         output_row.addWidget(output_label, 1)
         layout.addLayout(output_row)
 
-        process = QPushButton("开始处理")
-        process.setObjectName("processButton")
-        process.setEnabled(False)
-        process.clicked.connect(self._process)
-        process.setMinimumHeight(40)
-        layout.addWidget(process)
+        process_button = QPushButton("开始处理")
+        process_button.setObjectName("processButton")
+        process_button.setEnabled(False)
+        process_button.clicked.connect(self._process)
+        process_button.setMinimumHeight(40)
+        layout.addWidget(process_button)
         layout.addStretch()
         return content
 

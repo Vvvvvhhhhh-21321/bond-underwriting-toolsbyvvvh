@@ -5,4 +5,5 @@ __pycache__/
 tmp/
 output/
 *.py[cod]
+*.egg-info/
 测试文件集/

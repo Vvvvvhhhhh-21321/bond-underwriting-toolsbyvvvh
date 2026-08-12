@@ -1,2 +1,0 @@
-[console_scripts]
-disclosure-pdf-scaler = disclosure_pdf_scaler.gui:main

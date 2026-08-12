@@ -38,6 +38,7 @@ class FileResult:
 @dataclass(frozen=True)
 class BatchResult:
     files: tuple[FileResult, ...]
+    error: str | None = None
 
     @property
     def succeeded(self) -> int:
@@ -50,7 +51,17 @@ class BatchResult:
 
 def process_batch(request: BatchRequest) -> BatchResult:
     """处理有序文件请求，并返回每份文件的结果。"""
-    request.output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        request.output_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        message = f"无法创建输出目录：{error}"
+        return BatchResult(
+            files=tuple(
+                FileResult(source=file.source, output=None, error=message)
+                for file in request.files
+            ),
+            error=message,
+        )
     results: list[FileResult] = []
     for file_request in request.files:
         output = _available_output_path(request.output_dir, file_request.source.stem)
@@ -87,7 +98,10 @@ def _scale_file(request: FileRequest, output: Path) -> None:
         raise ValueError("工单 01 每份文件最多选择 9 页")
 
     writer = PdfWriter()
-    writer.add_page(_compose_a4_page(selected_pages))
+    if len(selected_pages) == 1:
+        writer.add_page(selected_pages[0])
+    else:
+        writer.add_page(_compose_a4_page(selected_pages))
     with output.open("wb") as stream:
         writer.write(stream)
 

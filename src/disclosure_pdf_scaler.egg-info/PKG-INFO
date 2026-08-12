@@ -1,7 +1,0 @@
-Metadata-Version: 2.4
-Name: disclosure-pdf-scaler
-Version: 0.1.0
-Summary: 披露 PDF 缩放工具
-Requires-Python: >=3.11
-Requires-Dist: pypdf==6.1.1
-Requires-Dist: PySide6==6.9.2
