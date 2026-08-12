@@ -1,0 +1,13 @@
+pyproject.toml
+src/disclosure_pdf_scaler/__init__.py
+src/disclosure_pdf_scaler/__main__.py
+src/disclosure_pdf_scaler/batch.py
+src/disclosure_pdf_scaler/gui.py
+src/disclosure_pdf_scaler.egg-info/PKG-INFO
+src/disclosure_pdf_scaler.egg-info/SOURCES.txt
+src/disclosure_pdf_scaler.egg-info/dependency_links.txt
+src/disclosure_pdf_scaler.egg-info/entry_points.txt
+src/disclosure_pdf_scaler.egg-info/requires.txt
+src/disclosure_pdf_scaler.egg-info/top_level.txt
+tests/test_batch_processing.py
+tests/test_gui.py
