@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Literal
 
 from pypdf import PdfReader, PdfWriter, Transformation
 from pypdf._page import PageObject
@@ -19,6 +20,7 @@ A4_HEIGHT_POINTS = 297 * POINTS_PER_MM
 PAGE_MARGIN = 5 * POINTS_PER_MM
 CELL_GAP = 2 * POINTS_PER_MM
 ProgressCallback = Callable[[int, int, str], None]
+FileStatus = Literal["success", "failed", "skipped"]
 
 
 class PageSelectionError(ValueError):
@@ -45,7 +47,7 @@ class FileResult:
     source: Path
     output: Path | None
     error: str | None
-    status: str = "success"
+    status: FileStatus = "success"
     selected_pages: tuple[int, ...] = ()
 
     @property
@@ -118,8 +120,8 @@ def process_batch(
         target = _new_batch_directory(target)
     try:
         target.mkdir(parents=True, exist_ok=True)
-    except OSError as error:
-        message = f"无法创建输出目录：{error}"
+    except OSError:
+        message = "无法创建输出目录，请检查目录权限或更换输出位置"
         return BatchResult(
             tuple(FileResult(f.source, None, message, "failed") for f in request.files),
             error=message,
@@ -133,10 +135,26 @@ def process_batch(
         output = _available_output_path(target, file_request.source.stem)
         try:
             selected_pages = _scale_file(file_request, output)
-        except (PageSelectionError, PdfReadError) as error:
+        except PageSelectionError as error:
             results.append(FileResult(file_request.source, None, str(error), "skipped"))
-        except Exception as error:
-            results.append(FileResult(file_request.source, None, str(error), "failed"))
+        except PdfReadError:
+            results.append(
+                FileResult(
+                    file_request.source,
+                    None,
+                    "PDF 文件损坏或无法解析，已跳过",
+                    "skipped",
+                )
+            )
+        except Exception:
+            results.append(
+                FileResult(
+                    file_request.source,
+                    None,
+                    "处理失败，请检查源文件和输出位置",
+                    "failed",
+                )
+            )
         else:
             results.append(
                 FileResult(

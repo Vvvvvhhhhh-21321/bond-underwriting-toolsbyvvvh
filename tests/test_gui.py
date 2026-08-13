@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -28,6 +29,16 @@ def _write_source_pdf(path: Path, pages: int = 3) -> None:
         writer.add_blank_page(width=400, height=600)
     with path.open("wb") as output:
         writer.write(output)
+
+
+def _wait_until(app: QApplication, condition: object, timeout: float = 10) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        app.processEvents()
+        if callable(condition) and condition():
+            return
+        time.sleep(0.01)
+    raise AssertionError("等待界面状态变化超时")
 
 
 def test_user_can_add_pdf_and_choose_output_location(
@@ -127,7 +138,10 @@ def test_invalid_page_is_marked_and_processing_keeps_list_but_resets_output(
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(output_dir))
     window.findChild(QPushButton, "chooseOutputButton").click()
     window.findChild(QPushButton, "processButton").click()
-    app.processEvents()
+    _wait_until(
+        app,
+        lambda: window.findChild(QLabel, "statusLabel").text() == "处理完成",
+    )
     assert len(window.entries) == 1
     assert window.findChild(QLabel, "outputDirectoryLabel").text() == "每次处理前请选择输出位置"
     assert not window.findChild(QPushButton, "processButton").isEnabled()
@@ -159,4 +173,31 @@ def test_unwritable_output_and_close_during_processing_are_blocked(
     window.closeEvent(event)
     assert not event.isAccepted()
     window._processing = False
+    window.close()
+
+
+def test_real_pdf_processing_keeps_window_responsive_and_blocks_close(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = QApplication.instance() or QApplication([])
+    source = tmp_path / "长篇披露材料.pdf"
+    output_dir = tmp_path / "结果"
+    output_dir.mkdir()
+    _write_source_pdf(source, pages=200)
+    monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(output_dir))
+    monkeypatch.setattr(QMessageBox, "information", lambda *args, **kwargs: None)
+    window = MainWindow()
+    window.show()
+    window.add_inputs((source,))
+    window.findChild(QPushButton, "chooseOutputButton").click()
+
+    window.findChild(QPushButton, "processButton").click()
+
+    status = window.findChild(QLabel, "statusLabel")
+    assert status.text() != "处理完成"
+    window.close()
+    app.processEvents()
+    assert window.isVisible()
+    _wait_until(app, lambda: status.text() == "处理完成")
+    assert len(window.entries) == 1
     window.close()

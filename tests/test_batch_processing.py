@@ -25,6 +25,37 @@ def _write_source_pdf(path: Path, page_count: int) -> None:
         writer.write(output)
 
 
+def _write_shaded_pdf(
+    path: Path, page_count: int, width_points: float, height_points: float
+) -> None:
+    writer = QPdfWriter(str(path))
+    writer.setResolution(72)
+    writer.setPageLayout(
+        QPageLayout(
+            QPageSize(
+                QSizeF(width_points, height_points),
+                QPageSize.Unit.Point,
+            ),
+            QPageLayout.Orientation.Portrait,
+            QMarginsF(0, 0, 0, 0),
+            QPageLayout.Unit.Point,
+        )
+    )
+    painter = QPainter(writer)
+    for index in range(page_count):
+        if index:
+            writer.newPage()
+        shade = 30 + index * 20
+        painter.fillRect(
+            0,
+            0,
+            writer.width(),
+            writer.height(),
+            QColor(shade, shade, shade),
+        )
+    painter.end()
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -56,6 +87,31 @@ def _assert_dark_region_geometry(
         visible_bottom - visible_top + 1
     )
     assert visible_ratio == pytest.approx(expected_ratio, abs=tolerance)
+
+
+def _runs(flags: list[bool]) -> list[tuple[int, int]]:
+    runs: list[tuple[int, int]] = []
+    start: int | None = None
+    for index, active in enumerate((*flags, False)):
+        if active and start is None:
+            start = index
+        elif not active and start is not None:
+            runs.append((start, index - 1))
+            start = None
+    return runs
+
+
+def _assert_runs_match_mm(
+    actual: list[tuple[int, int]],
+    expected_mm: list[tuple[float, float]],
+    pixels_per_mm: float,
+) -> None:
+    assert len(actual) == len(expected_mm)
+    for (actual_start, actual_end), (expected_start, expected_end) in zip(
+        actual, expected_mm, strict=True
+    ):
+        assert actual_start == pytest.approx(expected_start * pixels_per_mm, abs=2)
+        assert actual_end + 1 == pytest.approx(expected_end * pixels_per_mm, abs=2)
 
 
 def test_user_can_scale_two_selected_pages_without_changing_source(
@@ -156,7 +212,7 @@ def test_unreadable_request_returns_structured_failure(tmp_path: Path) -> None:
     assert result.failed == 1
     assert result.files[0].source == missing
     assert result.files[0].output is None
-    assert result.files[0].error
+    assert result.files[0].error == "处理失败，请检查源文件和输出位置"
 
 
 def test_damaged_pdf_is_skipped_without_stopping_batch(tmp_path: Path) -> None:
@@ -175,6 +231,7 @@ def test_damaged_pdf_is_skipped_without_stopping_batch(tmp_path: Path) -> None:
     assert result.skipped == 1
     assert result.succeeded == 1
     assert result.files[0].status == "skipped"
+    assert result.files[0].error == "PDF 文件损坏或无法解析，已跳过"
 
 
 def test_empty_explicit_page_selection_is_skipped(tmp_path: Path) -> None:
@@ -249,7 +306,7 @@ def test_output_directory_failure_is_returned_as_structured_result(
 
     assert result.succeeded == 0
     assert result.failed == 1
-    assert result.error
+    assert result.error == "无法创建输出目录，请检查目录权限或更换输出位置"
     assert result.files[0].error == result.error
 
 
@@ -327,6 +384,82 @@ def test_visible_page_geometry_is_scaled_uniformly_inside_a4(tmp_path: Path) -> 
         _assert_dark_region_geometry(
             image, (0, image.width(), top, bottom), 400 / 600, 0.02
         )
+
+
+@pytest.mark.parametrize(
+    ("page_count", "columns", "rows"),
+    ((3, 2, 2), (5, 2, 3), (8, 3, 3)),
+)
+def test_incomplete_last_row_uses_exact_physical_layout_and_reading_order(
+    tmp_path: Path,
+    page_count: int,
+    columns: int,
+    rows: int,
+) -> None:
+    margin_mm = 5.0
+    gap_mm = 2.0
+    cell_width_mm = (210 - 2 * margin_mm - (columns - 1) * gap_mm) / columns
+    cell_height_mm = (297 - 2 * margin_mm - (rows - 1) * gap_mm) / rows
+    points_per_mm = 72 / 25.4
+    source = tmp_path / f"{page_count}页布局.pdf"
+    _write_shaded_pdf(
+        source,
+        page_count,
+        cell_width_mm * points_per_mm,
+        cell_height_mm * points_per_mm,
+    )
+
+    result = process_batch(
+        BatchRequest(
+            (FileRequest(source, pages=tuple(range(1, page_count + 1))),),
+            tmp_path / "结果",
+        )
+    )
+
+    output = result.files[0].output
+    assert output is not None
+    document = QPdfDocument(None)
+    assert document.load(str(output)) == QPdfDocument.Error.None_
+    pixels_per_mm = 6.0
+    image = document.render(0, QSize(1260, 1782))
+    def is_dark(x: int, y: int) -> bool:
+        color = image.pixelColor(x, y)
+        return bool(color.alpha() > 128 and color.lightness() < 220)
+
+    visible_rows = _runs(
+        [any(is_dark(x, y) for x in range(image.width())) for y in range(image.height())]
+    )
+    expected_rows = [
+        (
+            margin_mm + row * (cell_height_mm + gap_mm),
+            margin_mm + row * (cell_height_mm + gap_mm) + cell_height_mm,
+        )
+        for row in range(rows)
+    ]
+    _assert_runs_match_mm(visible_rows, expected_rows, pixels_per_mm)
+
+    sampled_shades: list[int] = []
+    for row in range(rows):
+        pages_in_row = min(columns, page_count - row * columns)
+        row_width_mm = pages_in_row * cell_width_mm + (pages_in_row - 1) * gap_mm
+        row_start_mm = (210 - row_width_mm) / 2
+        expected_columns = [
+            (
+                row_start_mm + column * (cell_width_mm + gap_mm),
+                row_start_mm + column * (cell_width_mm + gap_mm) + cell_width_mm,
+            )
+            for column in range(pages_in_row)
+        ]
+        y_mm = margin_mm + row * (cell_height_mm + gap_mm) + cell_height_mm / 2
+        y = round(y_mm * pixels_per_mm)
+        visible_columns = _runs([is_dark(x, y) for x in range(image.width())])
+        _assert_runs_match_mm(visible_columns, expected_columns, pixels_per_mm)
+        for left_mm, right_mm in expected_columns:
+            sampled_shades.append(
+                image.pixelColor(round((left_mm + right_mm) / 2 * pixels_per_mm), y).lightness()
+            )
+    assert sampled_shades == sorted(sampled_shades)
+    assert len(set(sampled_shades)) == page_count
 
 
 def test_rotated_inverted_and_slightly_different_pages_render(tmp_path: Path) -> None:

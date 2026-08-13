@@ -15,7 +15,8 @@ try {
 
     $compiler = Join-Path $workspace "tools\inno\ISCC.exe"
     if (-not (Test-Path $compiler)) { throw "未找到 Inno Setup 编译器" }
-    & $compiler "installer\disclosure-pdf-scaler.iss"
+    $version = (Get-Content "build\app_version.txt" -Raw).Trim()
+    & $compiler "/DMyAppVersion=$version" "installer\disclosure-pdf-scaler.iss"
     if ($LASTEXITCODE -ne 0) { throw "安装程序构建失败" }
 }
 finally {

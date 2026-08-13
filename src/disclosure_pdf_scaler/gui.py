@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from pypdf import PdfReader
-from PySide6.QtCore import QEventLoop, Qt
+from PySide6.QtCore import QObject, QThread, Qt, Signal
 from PySide6.QtGui import QCloseEvent, QDragEnterEvent, QDropEvent, QIcon, QResizeEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 from disclosure_pdf_scaler.batch import (
     BatchRequest,
+    BatchResult,
     FileRequest,
     PageSelectionError,
     default_page_hint,
@@ -61,12 +62,27 @@ class ElidedLabel(QLabel):  # type: ignore[misc]
         super().resizeEvent(event)
 
 
+class BatchWorker(QObject):  # type: ignore[misc]
+    progress = Signal(int, int, str)
+    finished = Signal(object)
+
+    def __init__(self, request: BatchRequest) -> None:
+        super().__init__()
+        self._request = request
+
+    def run(self) -> None:
+        result = process_batch(self._request, self.progress.emit)
+        self.finished.emit(result)
+
+
 class MainWindow(QMainWindow):  # type: ignore[misc]
     def __init__(self) -> None:
         super().__init__()
         self.entries: list[FileEntry] = []
         self._output_root: Path | None = None
         self._processing = False
+        self._worker: BatchWorker | None = None
+        self._worker_thread: QThread | None = None
         self.setWindowTitle("披露PDF缩放工具")
         self.resize(900, 650)
         self.setMinimumSize(720, 520)
@@ -307,10 +323,10 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
             try:
                 with NamedTemporaryFile(dir=candidate):
                     pass
-            except OSError as error:
+            except OSError:
                 self._output_root = None
                 self._output_label.setText("输出位置不可写，请重新选择")
-                QMessageBox.warning(self, "无法使用输出位置", f"所选位置不可写：{error}")
+                QMessageBox.warning(self, "无法使用输出位置", "所选位置不可写，请重新选择")
             else:
                 self._output_root = candidate
                 self._output_label.setText(selected)
@@ -334,15 +350,29 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         self._progress.setRange(0, len(requests))
         self._progress.show()
         self._status.show()
+        self._status.setText("正在准备处理…")
         self._refresh_process_button()
 
-        def report(done: int, total: int, name: str) -> None:
-            self._progress.setMaximum(total)
-            self._progress.setValue(done)
-            self._status.setText(f"正在处理：{name}（{done}/{total}）")
-            QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
+        thread = QThread(self)
+        worker = BatchWorker(BatchRequest(requests, self._output_root, True))
+        self._worker_thread = thread
+        self._worker = worker
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.progress.connect(self._report_progress)
+        worker.finished.connect(self._finish_processing)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._release_worker)
+        thread.start()
 
-        result = process_batch(BatchRequest(requests, self._output_root, True), report)
+    def _report_progress(self, done: int, total: int, name: str) -> None:
+        self._progress.setMaximum(total)
+        self._progress.setValue(done)
+        self._status.setText(f"正在处理：{name}（{done}/{total}）")
+
+    def _finish_processing(self, result: BatchResult) -> None:
         self._processing = False
         self._output_root = None
         self._output_label.setText("每次处理前请选择输出位置")
@@ -358,6 +388,10 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
             dialog.exec()
         else:
             QMessageBox.information(self, "处理完成", "处理完成")
+
+    def _release_worker(self) -> None:
+        self._worker = None
+        self._worker_thread = None
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         if event.mimeData().hasUrls():

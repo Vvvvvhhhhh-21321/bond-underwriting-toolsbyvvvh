@@ -1,6 +1,9 @@
 #define MyAppName "披露PDF缩放工具"
-#define MyAppVersion "1.0.0"
 #define MyAppExeName "披露PDF缩放工具.exe"
+
+#ifndef MyAppVersion
+  #error 构建脚本必须提供 MyAppVersion
+#endif
 
 [Setup]
 AppId={{D43FB764-0299-43C8-9BF0-B42C740F778E}
@@ -39,4 +42,3 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent
-
