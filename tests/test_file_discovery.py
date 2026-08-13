@@ -34,4 +34,15 @@ def test_same_name_keeps_first_input_before_natural_sort(tmp_path: Path) -> None
 
     assert first.resolve() in result.files
     assert later_same_name.resolve() not in result.files
+    assert [path.name for path in result.files] == ["报告10.pdf", "报告2.pdf"]
+
+
+def test_files_in_same_folder_use_natural_full_path_order(tmp_path: Path) -> None:
+    report10 = tmp_path / "报告10.pdf"
+    report2 = tmp_path / "报告2.pdf"
+    report10.write_bytes(b"x")
+    report2.write_bytes(b"x")
+
+    result = discover_pdfs((report10, report2))
+
     assert [path.name for path in result.files] == ["报告2.pdf", "报告10.pdf"]

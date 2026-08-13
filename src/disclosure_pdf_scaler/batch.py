@@ -46,6 +46,7 @@ class FileResult:
     output: Path | None
     error: str | None
     status: str = "success"
+    selected_pages: tuple[int, ...] = ()
 
     @property
     def succeeded(self) -> bool:
@@ -131,13 +132,20 @@ def process_batch(
             progress(index - 1, total, file_request.source.name)
         output = _available_output_path(target, file_request.source.stem)
         try:
-            _scale_file(file_request, output)
+            selected_pages = _scale_file(file_request, output)
         except (PageSelectionError, PdfReadError) as error:
             results.append(FileResult(file_request.source, None, str(error), "skipped"))
         except Exception as error:
             results.append(FileResult(file_request.source, None, str(error), "failed"))
         else:
-            results.append(FileResult(file_request.source, output, None))
+            results.append(
+                FileResult(
+                    file_request.source,
+                    output,
+                    None,
+                    selected_pages=selected_pages,
+                )
+            )
         if progress:
             progress(index, total, file_request.source.name)
     if not any(item.succeeded for item in results) and request.create_batch_folder:
@@ -176,7 +184,7 @@ def _available_output_path(output_dir: Path, source_stem: str) -> Path:
     return candidate
 
 
-def _scale_file(request: FileRequest, output: Path) -> None:
+def _scale_file(request: FileRequest, output: Path) -> tuple[int, ...]:
     reader = PdfReader(request.source)
     if reader.is_encrypted:
         raise PageSelectionError("PDF 受密码保护，已跳过")
@@ -207,6 +215,7 @@ def _scale_file(request: FileRequest, output: Path) -> None:
     finally:
         if temp_path is not None and temp_path.exists():
             temp_path.unlink()
+    return numbers
 
 
 def _prepared_page(page: PageObject) -> PageObject:

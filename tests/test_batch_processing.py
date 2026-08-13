@@ -45,6 +45,7 @@ def test_user_can_scale_two_selected_pages_without_changing_source(
     )
 
     assert result.succeeded == 1
+    assert result.files[0].selected_pages == (1, 3)
     assert result.failed == 0
     output = output_dir / "披露材料_缩放.pdf"
     assert result.files[0].output == output
@@ -330,7 +331,13 @@ def test_rotated_inverted_and_slightly_different_pages_render(tmp_path: Path) ->
     for index in range(3):
         if index:
             pdf_writer.newPage()
-        painter.fillRect(0, 0, pdf_writer.width(), pdf_writer.height(), QColor("black"))
+        painter.fillRect(
+            pdf_writer.width() // 10,
+            pdf_writer.height() // 10,
+            pdf_writer.width() * 8 // 10,
+            pdf_writer.height() * 8 // 10,
+            QColor("black"),
+        )
     painter.end()
     reader = PdfReader(plain)
     reader.pages[0].rotate(90)
@@ -354,8 +361,27 @@ def test_rotated_inverted_and_slightly_different_pages_render(tmp_path: Path) ->
     assert rendered.load(str(output)) == QPdfDocument.Error.None_
     image = rendered.render(0, QSize(595, 842))
     assert not image.isNull()
-    assert any(
-        image.pixelColor(x, y).lightness() < 32
-        for y in range(0, image.height(), 10)
-        for x in range(0, image.width(), 10)
+    regions = (
+        (0, image.width() // 2, 0, image.height() // 2, 600 / 400),
+        (image.width() // 2, image.width(), 0, image.height() // 2, 400 / 600),
+        (image.width() // 4, image.width() * 3 // 4, image.height() // 2, image.height(), 400.2 / 600.1),
     )
+    for left, right, top, bottom, expected_ratio in regions:
+        dark_pixels = [
+            (x, y)
+            for y in range(top, bottom)
+            for x in range(left, right)
+            if image.pixelColor(x, y).alpha() > 128
+            and image.pixelColor(x, y).lightness() < 32
+        ]
+        assert dark_pixels
+        visible_left = min(x for x, _ in dark_pixels)
+        visible_right = max(x for x, _ in dark_pixels)
+        visible_top = min(y for _, y in dark_pixels)
+        visible_bottom = max(y for _, y in dark_pixels)
+        assert visible_left > left
+        assert visible_right < right - 1
+        assert visible_top > top
+        assert visible_bottom < bottom - 1
+        visible_ratio = (visible_right - visible_left + 1) / (visible_bottom - visible_top + 1)
+        assert visible_ratio == pytest.approx(expected_ratio, abs=0.03)

@@ -55,7 +55,7 @@ def discover_pdfs(inputs: tuple[Path, ...]) -> DiscoveryResult:
 
 
 def natural_path_key(path: Path) -> tuple[object, ...]:
-    return (*_natural_key(path.name), *_natural_key(str(path)))
+    return _natural_key(str(path))
 
 
 def _natural_key(value: str) -> tuple[object, ...]:

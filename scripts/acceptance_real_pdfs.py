@@ -29,6 +29,10 @@ def main() -> int:
     after = {path: _fingerprint(path) for path in files}
     outputs = [_inspect(item.output) for item in result.files if item.output]
     input_pages = sum(len(PdfReader(path).pages) for path in files)
+    removed_last_pages = all(
+        item.selected_pages == tuple(range(1, len(PdfReader(item.source).pages)))
+        for item in result.files
+    )
     report = {
         "inputs": len(files),
         "input_pages": input_pages,
@@ -36,6 +40,7 @@ def main() -> int:
         "failed": result.failed,
         "skipped": result.skipped,
         "source_unchanged": before == after,
+        "removed_last_pages": removed_last_pages,
         "seconds": round(time.monotonic() - started, 2),
         "outputs": outputs,
     }
@@ -48,6 +53,7 @@ def main() -> int:
         and result.failed == 0
         and result.skipped == 0
         and before == after
+        and removed_last_pages
         and sorted(int(item["pages"]) for item in outputs) == expected_output_pages
         and all(item["annotations"] == 0 for item in outputs)
         and all(item["metadata"] is False for item in outputs)
