@@ -31,6 +31,15 @@ def _write_source_pdf(path: Path, pages: int = 3) -> None:
         writer.write(output)
 
 
+def test_window_uses_new_product_name() -> None:
+    QApplication.instance() or QApplication([])
+    window = MainWindow()
+
+    assert window.windowTitle() == "底稿pdf缩放打印工具"
+
+    window.close()
+
+
 def _wait_until(app: QApplication, condition: object, timeout: float = 10) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:

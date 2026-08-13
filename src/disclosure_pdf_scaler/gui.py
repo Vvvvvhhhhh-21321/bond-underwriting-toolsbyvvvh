@@ -83,7 +83,7 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         self._processing = False
         self._worker: BatchWorker | None = None
         self._worker_thread: QThread | None = None
-        self.setWindowTitle("披露PDF缩放工具")
+        self.setWindowTitle("底稿pdf缩放打印工具")
         self.resize(900, 650)
         self.setMinimumSize(720, 520)
         self.setAcceptDrops(True)
@@ -100,10 +100,10 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         layout.setContentsMargins(44, 34, 44, 32)
         layout.setSpacing(18)
 
-        eyebrow = QLabel("披露文件工作台")
+        eyebrow = QLabel("底稿 PDF 工作台")
         eyebrow.setObjectName("eyebrow")
         layout.addWidget(eyebrow)
-        title = QLabel("让厚重的披露文件，\n落在更少的纸张上。")
+        title = QLabel("让厚重的底稿文件，\n落在更少的纸张上。")
         title.setObjectName("title")
         layout.addWidget(title)
         subtitle = QLabel("原生 PDF 拼版 · 文字保持可搜索 · 全程本地处理")
@@ -437,7 +437,7 @@ QScrollArea { background: transparent; }
 
 def main() -> int:
     application = QApplication(sys.argv)
-    application.setApplicationName("披露PDF缩放工具")
+    application.setApplicationName("底稿pdf缩放打印工具")
     window = MainWindow()
     window.show()
     return int(application.exec())

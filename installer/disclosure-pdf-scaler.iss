@@ -1,5 +1,5 @@
-#define MyAppName "披露PDF缩放工具"
-#define MyAppExeName "披露PDF缩放工具.exe"
+#define MyAppName "底稿pdf缩放打印工具"
+#define MyAppExeName "底稿pdf缩放打印工具.exe"
 
 #ifndef MyAppVersion
   #error 构建脚本必须提供 MyAppVersion
@@ -17,7 +17,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\dist
-OutputBaseFilename=披露PDF缩放工具_安装程序
+OutputBaseFilename=底稿pdf缩放打印工具_安装程序
 SetupIconFile=..\src\disclosure_pdf_scaler\assets\app.ico
 Compression=lzma2/max
 SolidCompression=yes
@@ -34,7 +34,7 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加快捷方式："; Flags: checkedonce
 
 [Files]
-Source: "..\dist\披露PDF缩放工具\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\底稿pdf缩放打印工具\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

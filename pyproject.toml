@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "disclosure-pdf-scaler"
-version = "1.0.1"
-description = "披露 PDF 缩放工具"
+version = "1.0.2"
+description = "底稿pdf缩放打印工具"
 requires-python = ">=3.11"
 dependencies = [
     "pypdf==6.1.1",

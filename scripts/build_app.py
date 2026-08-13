@@ -24,11 +24,11 @@ version_file.write_text(
   ffi=FixedFileInfo(filevers={file_version}, prodvers={file_version}, mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0)),
   kids=[StringFileInfo([StringTable('080404B0', [
     StringStruct('CompanyName', '本地工具'),
-    StringStruct('FileDescription', '披露PDF缩放工具'),
+    StringStruct('FileDescription', '底稿pdf缩放打印工具'),
     StringStruct('FileVersion', '{version}'),
-    StringStruct('InternalName', '披露PDF缩放工具'),
-    StringStruct('OriginalFilename', '披露PDF缩放工具.exe'),
-    StringStruct('ProductName', '披露PDF缩放工具'),
+    StringStruct('InternalName', '底稿pdf缩放打印工具'),
+    StringStruct('OriginalFilename', '底稿pdf缩放打印工具.exe'),
+    StringStruct('ProductName', '底稿pdf缩放打印工具'),
     StringStruct('ProductVersion', '{version}')
   ])]), VarFileInfo([VarStruct('Translation', [2052, 1200])])]
 )
@@ -46,7 +46,7 @@ PyInstaller.__main__.run(
         "--exclude-module=matplotlib",
         "--exclude-module=pandas",
         "--exclude-module=scipy",
-        "--name=披露PDF缩放工具",
+        "--name=底稿pdf缩放打印工具",
         f"--icon={workspace / 'src/disclosure_pdf_scaler/assets/app.ico'}",
         f"--add-data={workspace / 'src/disclosure_pdf_scaler/assets'};disclosure_pdf_scaler/assets",
         f"--version-file={version_file}",
