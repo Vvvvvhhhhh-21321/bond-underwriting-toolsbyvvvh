@@ -83,7 +83,7 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         layout.setContentsMargins(44, 34, 44, 32)
         layout.setSpacing(18)
 
-        eyebrow = QLabel("DISCLOSURE WORKSPACE")
+        eyebrow = QLabel("披露文件工作台")
         eyebrow.setObjectName("eyebrow")
         layout.addWidget(eyebrow)
         title = QLabel("让厚重的披露文件，\n落在更少的纸张上。")
