@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QMarginsF, QSize, QSizeF
-from PySide6.QtGui import QColor, QPageLayout, QPageSize, QPainter, QPdfWriter
+from PySide6.QtGui import QColor, QImage, QPageLayout, QPageSize, QPainter, QPdfWriter
 from PySide6.QtPdf import QPdfDocument
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import RectangleObject
@@ -27,6 +27,35 @@ def _write_source_pdf(path: Path, page_count: int) -> None:
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _assert_dark_region_geometry(
+    image: QImage,
+    region: tuple[int, int, int, int],
+    expected_ratio: float,
+    tolerance: float,
+) -> None:
+    left, right, top, bottom = region
+    dark_pixels = [
+        (x, y)
+        for y in range(top, bottom)
+        for x in range(left, right)
+        if image.pixelColor(x, y).alpha() > 128
+        and image.pixelColor(x, y).lightness() < 32
+    ]
+    assert dark_pixels
+    visible_left = min(x for x, _ in dark_pixels)
+    visible_right = max(x for x, _ in dark_pixels)
+    visible_top = min(y for _, y in dark_pixels)
+    visible_bottom = max(y for _, y in dark_pixels)
+    assert visible_left > left
+    assert visible_right < right - 1
+    assert visible_top > top
+    assert visible_bottom < bottom - 1
+    visible_ratio = (visible_right - visible_left + 1) / (
+        visible_bottom - visible_top + 1
+    )
+    assert visible_ratio == pytest.approx(expected_ratio, abs=tolerance)
 
 
 def test_user_can_scale_two_selected_pages_without_changing_source(
@@ -295,24 +324,9 @@ def test_visible_page_geometry_is_scaled_uniformly_inside_a4(tmp_path: Path) -> 
     image = rendered_pdf.render(0, QSize(1190, 1684))
 
     for top, bottom in ((0, image.height() // 2), (image.height() // 2, image.height())):
-        dark_pixels = [
-            (x, y)
-            for y in range(top, bottom)
-            for x in range(image.width())
-            if image.pixelColor(x, y).alpha() > 128
-            and image.pixelColor(x, y).lightness() < 32
-        ]
-        assert dark_pixels
-        left = min(x for x, _ in dark_pixels)
-        right = max(x for x, _ in dark_pixels)
-        upper = min(y for _, y in dark_pixels)
-        lower = max(y for _, y in dark_pixels)
-        assert left > 0
-        assert right < image.width() - 1
-        assert upper >= top
-        assert lower < bottom
-        visible_ratio = (right - left + 1) / (lower - upper + 1)
-        assert visible_ratio == pytest.approx(400 / 600, abs=0.02)
+        _assert_dark_region_geometry(
+            image, (0, image.width(), top, bottom), 400 / 600, 0.02
+        )
 
 
 def test_rotated_inverted_and_slightly_different_pages_render(tmp_path: Path) -> None:
@@ -367,21 +381,6 @@ def test_rotated_inverted_and_slightly_different_pages_render(tmp_path: Path) ->
         (image.width() // 4, image.width() * 3 // 4, image.height() // 2, image.height(), 400.2 / 600.1),
     )
     for left, right, top, bottom, expected_ratio in regions:
-        dark_pixels = [
-            (x, y)
-            for y in range(top, bottom)
-            for x in range(left, right)
-            if image.pixelColor(x, y).alpha() > 128
-            and image.pixelColor(x, y).lightness() < 32
-        ]
-        assert dark_pixels
-        visible_left = min(x for x, _ in dark_pixels)
-        visible_right = max(x for x, _ in dark_pixels)
-        visible_top = min(y for _, y in dark_pixels)
-        visible_bottom = max(y for _, y in dark_pixels)
-        assert visible_left > left
-        assert visible_right < right - 1
-        assert visible_top > top
-        assert visible_bottom < bottom - 1
-        visible_ratio = (visible_right - visible_left + 1) / (visible_bottom - visible_top + 1)
-        assert visible_ratio == pytest.approx(expected_ratio, abs=0.03)
+        _assert_dark_region_geometry(
+            image, (left, right, top, bottom), expected_ratio, 0.03
+        )
