@@ -40,7 +40,6 @@ def discover_pdfs(inputs: tuple[Path, ...]) -> DiscoveryResult:
             seen_paths.add(key)
             unique_paths.append(path.resolve())
 
-    unique_paths.sort(key=lambda path: _natural_key(str(path)))
     seen_names: set[str] = set()
     files: list[Path] = []
     duplicate_names: list[str] = []
@@ -51,7 +50,12 @@ def discover_pdfs(inputs: tuple[Path, ...]) -> DiscoveryResult:
         else:
             seen_names.add(key)
             files.append(path)
+    files.sort(key=natural_path_key)
     return DiscoveryResult(tuple(files), ignored, duplicate_paths, tuple(duplicate_names))
+
+
+def natural_path_key(path: Path) -> tuple[object, ...]:
+    return (*_natural_key(path.name), *_natural_key(str(path)))
 
 
 def _natural_key(value: str) -> tuple[object, ...]:

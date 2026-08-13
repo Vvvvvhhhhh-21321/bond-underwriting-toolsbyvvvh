@@ -20,3 +20,18 @@ def test_files_and_folders_are_discovered_deduplicated_and_sorted(tmp_path: Path
     assert result.duplicate_paths == 1
     assert result.ignored_non_pdf == 1
     assert result.duplicate_names == ("报告.pdf",)
+
+
+def test_same_name_keeps_first_input_before_natural_sort(tmp_path: Path) -> None:
+    first = tmp_path / "乙" / "报告10.pdf"
+    later_same_name = tmp_path / "甲" / "报告10.pdf"
+    numbered = tmp_path / "甲" / "报告2.pdf"
+    for path in (first, later_same_name, numbered):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x")
+
+    result = discover_pdfs((first, later_same_name, numbered))
+
+    assert first.resolve() in result.files
+    assert later_same_name.resolve() not in result.files
+    assert [path.name for path in result.files] == ["报告2.pdf", "报告10.pdf"]

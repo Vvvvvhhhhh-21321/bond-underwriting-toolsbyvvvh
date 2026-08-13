@@ -8,6 +8,7 @@ from PySide6.QtCore import QMarginsF, QSize, QSizeF
 from PySide6.QtGui import QColor, QPageLayout, QPageSize, QPainter, QPdfWriter
 from PySide6.QtPdf import QPdfDocument
 from pypdf import PdfReader, PdfWriter
+from pypdf.generic import RectangleObject
 
 from disclosure_pdf_scaler.batch import BatchRequest, FileRequest, process_batch
 
@@ -126,6 +127,24 @@ def test_unreadable_request_returns_structured_failure(tmp_path: Path) -> None:
     assert result.files[0].source == missing
     assert result.files[0].output is None
     assert result.files[0].error
+
+
+def test_damaged_pdf_is_skipped_without_stopping_batch(tmp_path: Path) -> None:
+    damaged = tmp_path / "损坏.pdf"
+    valid = tmp_path / "有效.pdf"
+    damaged.write_bytes(b"not a pdf")
+    _write_source_pdf(valid, 2)
+
+    result = process_batch(
+        BatchRequest(
+            files=(FileRequest(damaged), FileRequest(valid, pages=(1, 2))),
+            output_dir=tmp_path / "结果",
+        )
+    )
+
+    assert result.skipped == 1
+    assert result.succeeded == 1
+    assert result.files[0].status == "skipped"
 
 
 def test_empty_explicit_page_selection_is_skipped(tmp_path: Path) -> None:
@@ -293,3 +312,50 @@ def test_visible_page_geometry_is_scaled_uniformly_inside_a4(tmp_path: Path) -> 
         assert lower < bottom
         visible_ratio = (right - left + 1) / (lower - upper + 1)
         assert visible_ratio == pytest.approx(400 / 600, abs=0.02)
+
+
+def test_rotated_inverted_and_slightly_different_pages_render(tmp_path: Path) -> None:
+    plain = tmp_path / "原始.pdf"
+    source = tmp_path / "复杂页面.pdf"
+    pdf_writer = QPdfWriter(str(plain))
+    pdf_writer.setPageLayout(
+        QPageLayout(
+            QPageSize(QSizeF(400, 600), QPageSize.Unit.Point),
+            QPageLayout.Orientation.Portrait,
+            QMarginsF(0, 0, 0, 0),
+            QPageLayout.Unit.Point,
+        )
+    )
+    painter = QPainter(pdf_writer)
+    for index in range(3):
+        if index:
+            pdf_writer.newPage()
+        painter.fillRect(0, 0, pdf_writer.width(), pdf_writer.height(), QColor("black"))
+    painter.end()
+    reader = PdfReader(plain)
+    reader.pages[0].rotate(90)
+    reader.pages[1].mediabox = RectangleObject((400, 600, 0, 0))
+    reader.pages[1].cropbox = RectangleObject((400, 600, 0, 0))
+    reader.pages[2].mediabox = RectangleObject((0, 0, 400.2, 600.1))
+    writer = PdfWriter()
+    for page in reader.pages:
+        writer.add_page(page)
+    with source.open("wb") as stream:
+        writer.write(stream)
+
+    result = process_batch(
+        BatchRequest((FileRequest(source, pages=(1, 2, 3)),), tmp_path / "结果")
+    )
+
+    assert result.succeeded == 1
+    output = result.files[0].output
+    assert output is not None
+    rendered = QPdfDocument(None)
+    assert rendered.load(str(output)) == QPdfDocument.Error.None_
+    image = rendered.render(0, QSize(595, 842))
+    assert not image.isNull()
+    assert any(
+        image.pixelColor(x, y).lightness() < 32
+        for y in range(0, image.height(), 10)
+        for x in range(0, image.width(), 10)
+    )

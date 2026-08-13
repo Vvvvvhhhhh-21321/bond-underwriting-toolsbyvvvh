@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 $workspace = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $workspace ".venv\Scripts\python.exe"
 $env:PYTHONNOUSERSITE = "1"

@@ -9,6 +9,7 @@ from tempfile import NamedTemporaryFile
 
 from pypdf import PdfReader, PdfWriter, Transformation
 from pypdf._page import PageObject
+from pypdf.errors import PdfReadError
 from pypdf.generic import NameObject, RectangleObject
 
 
@@ -131,7 +132,7 @@ def process_batch(
         output = _available_output_path(target, file_request.source.stem)
         try:
             _scale_file(file_request, output)
-        except PageSelectionError as error:
+        except (PageSelectionError, PdfReadError) as error:
             results.append(FileResult(file_request.source, None, str(error), "skipped"))
         except Exception as error:
             results.append(FileResult(file_request.source, None, str(error), "failed"))

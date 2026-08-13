@@ -3,9 +3,10 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from pypdf import PdfReader
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEventLoop, Qt
 from PySide6.QtGui import QCloseEvent, QDragEnterEvent, QDropEvent, QIcon, QResizeEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -33,7 +34,7 @@ from disclosure_pdf_scaler.batch import (
     process_batch,
     resolve_pages,
 )
-from disclosure_pdf_scaler.files import DiscoveryResult, discover_pdfs
+from disclosure_pdf_scaler.files import DiscoveryResult, discover_pdfs, natural_path_key
 
 
 @dataclass
@@ -193,8 +194,14 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         discovered = discover_pdfs(inputs)
         existing_paths = {str(entry.path).casefold() for entry in self.entries}
         existing_names = {entry.path.name.casefold() for entry in self.entries}
+        repeated_paths = 0
+        repeated_names: list[str] = []
         for path in discovered.files:
-            if str(path).casefold() in existing_paths or path.name.casefold() in existing_names:
+            if str(path).casefold() in existing_paths:
+                repeated_paths += 1
+                continue
+            if path.name.casefold() in existing_names:
+                repeated_names.append(path.name)
                 continue
             try:
                 reader = PdfReader(path)
@@ -206,15 +213,17 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
             self._add_entry(path, page_count)
             existing_paths.add(str(path).casefold())
             existing_names.add(path.name.casefold())
-        self.entries.sort(key=lambda entry: str(entry.path).casefold())
+        self.entries.sort(key=lambda entry: natural_path_key(entry.path))
         self._rebuild_rows()
         notices: list[str] = []
         if discovered.ignored_non_pdf:
             notices.append(f"已忽略 {discovered.ignored_non_pdf} 个非 PDF 文件")
-        if discovered.duplicate_paths:
-            notices.append(f"已忽略 {discovered.duplicate_paths} 个重复文件")
-        if discovered.duplicate_names:
-            notices.append("已忽略同名文件：" + "、".join(discovered.duplicate_names))
+        duplicate_path_count = discovered.duplicate_paths + repeated_paths
+        if duplicate_path_count:
+            notices.append(f"已忽略 {duplicate_path_count} 个重复文件")
+        duplicate_names = (*discovered.duplicate_names, *repeated_names)
+        if duplicate_names:
+            notices.append("已忽略同名文件：" + "、".join(duplicate_names))
         if notices:
             QMessageBox.information(self, "已完成添加", "\n".join(notices))
         return discovered
@@ -294,8 +303,17 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
     def _choose_output(self) -> None:
         selected = QFileDialog.getExistingDirectory(self, "选择输出位置")
         if selected:
-            self._output_root = Path(selected)
-            self._output_label.setText(selected)
+            candidate = Path(selected)
+            try:
+                with NamedTemporaryFile(dir=candidate):
+                    pass
+            except OSError as error:
+                self._output_root = None
+                self._output_label.setText("输出位置不可写，请重新选择")
+                QMessageBox.warning(self, "无法使用输出位置", f"所选位置不可写：{error}")
+            else:
+                self._output_root = candidate
+                self._output_label.setText(selected)
         self._refresh_process_button()
 
     def _refresh_process_button(self) -> None:
@@ -322,10 +340,12 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
             self._progress.setMaximum(total)
             self._progress.setValue(done)
             self._status.setText(f"正在处理：{name}（{done}/{total}）")
-            QApplication.processEvents(QEvent.ProcessEventsFlag.ExcludeUserInputEvents)
+            QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
 
         result = process_batch(BatchRequest(requests, self._output_root, True), report)
         self._processing = False
+        self._output_root = None
+        self._output_label.setText("每次处理前请选择输出位置")
         self._status.setText("处理完成")
         self._refresh_process_button()
         problems = [item for item in result.files if not item.succeeded]

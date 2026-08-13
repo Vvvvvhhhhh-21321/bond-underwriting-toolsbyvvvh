@@ -28,8 +28,10 @@ def main() -> int:
     )
     after = {path: _fingerprint(path) for path in files}
     outputs = [_inspect(item.output) for item in result.files if item.output]
+    input_pages = sum(len(PdfReader(path).pages) for path in files)
     report = {
         "inputs": len(files),
+        "input_pages": input_pages,
         "success": result.succeeded,
         "failed": result.failed,
         "skipped": result.skipped,
@@ -38,7 +40,20 @@ def main() -> int:
         "outputs": outputs,
     }
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if result.succeeded == 8 and before == after else 1
+    expected_output_pages = [1, 1, 1, 1, 1, 7, 18, 33]
+    passed = (
+        len(files) == 8
+        and input_pages == 521
+        and result.succeeded == 8
+        and result.failed == 0
+        and result.skipped == 0
+        and before == after
+        and sorted(int(item["pages"]) for item in outputs) == expected_output_pages
+        and all(item["annotations"] == 0 for item in outputs)
+        and all(item["metadata"] is False for item in outputs)
+        and all(int(item["text_chars"]) > 0 for item in outputs)
+    )
+    return 0 if passed else 1
 
 
 def _fingerprint(path: Path) -> tuple[int, int, str]:
@@ -59,4 +74,3 @@ def _inspect(path: Path) -> dict[str, object]:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
