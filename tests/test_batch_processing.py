@@ -128,6 +128,42 @@ def test_unreadable_request_returns_structured_failure(tmp_path: Path) -> None:
     assert result.files[0].error
 
 
+def test_empty_explicit_page_selection_is_skipped(tmp_path: Path) -> None:
+    source = tmp_path / "披露材料.pdf"
+    _write_source_pdf(source, page_count=2)
+
+    result = process_batch(
+        BatchRequest(
+            files=(FileRequest(source=source, pages=()),),
+            output_dir=tmp_path / "结果",
+        )
+    )
+
+    assert result.skipped == 1
+    assert result.files[0].status == "skipped"
+    assert result.files[0].error == "至少选择一页"
+
+
+@pytest.mark.parametrize(
+    ("selected_count", "expected_output_pages"),
+    [(1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1), (8, 1), (9, 1), (10, 2), (18, 2), (20, 3)],
+)
+def test_selected_pages_are_grouped_by_nine(
+    tmp_path: Path, selected_count: int, expected_output_pages: int
+) -> None:
+    source = tmp_path / f"{selected_count}页.pdf"
+    _write_source_pdf(source, selected_count)
+    result = process_batch(
+        BatchRequest(
+            files=(FileRequest(source=source, pages=tuple(range(1, selected_count + 1))),),
+            output_dir=tmp_path / "结果",
+        )
+    )
+    output = result.files[0].output
+    assert output is not None
+    assert len(PdfReader(output).pages) == expected_output_pages
+
+
 def test_single_selected_page_keeps_original_dimensions(tmp_path: Path) -> None:
     source = tmp_path / "单页材料.pdf"
     output_dir = tmp_path / "结果"
@@ -166,6 +202,45 @@ def test_output_directory_failure_is_returned_as_structured_result(
     assert result.failed == 1
     assert result.error
     assert result.files[0].error == result.error
+
+
+def test_batch_folder_is_created_and_one_failure_does_not_stop_rest(
+    tmp_path: Path,
+) -> None:
+    valid = tmp_path / "有效.pdf"
+    missing = tmp_path / "缺失.pdf"
+    _write_source_pdf(valid, 2)
+
+    result = process_batch(
+        BatchRequest(
+            files=(
+                FileRequest(missing, pages=(1,)),
+                FileRequest(valid, pages=(1, 2)),
+            ),
+            output_dir=tmp_path / "输出根目录",
+            create_batch_folder=True,
+        )
+    )
+
+    assert result.succeeded == 1
+    assert result.failed == 1
+    assert result.output_dir is not None
+    assert result.output_dir.name.startswith("PDF缩放结果_")
+    assert [path.name for path in result.output_dir.iterdir()] == ["有效_缩放.pdf"]
+
+
+def test_empty_batch_result_folder_is_removed(tmp_path: Path) -> None:
+    result = process_batch(
+        BatchRequest(
+            files=(FileRequest(tmp_path / "缺失.pdf", pages=(1,)),),
+            output_dir=tmp_path / "输出根目录",
+            create_batch_folder=True,
+        )
+    )
+
+    assert result.succeeded == 0
+    assert result.output_dir is None
+    assert list((tmp_path / "输出根目录").iterdir()) == []
 
 
 def test_visible_page_geometry_is_scaled_uniformly_inside_a4(tmp_path: Path) -> None:

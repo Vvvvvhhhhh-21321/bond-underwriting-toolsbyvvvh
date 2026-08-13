@@ -1,6 +1,6 @@
 # 披露 PDF 缩放工具
 
-当前版本完成工单 01：选择一份 PDF、指定一个连续页码范围，并把 2 至 9 页直接拼排到一张 A4 纵向 PDF 中。源文件不会被修改；目标位置已有同名结果时会自动使用递增序号。
+版本 1.0.0 支持批量添加 PDF、递归文件夹和拖放，为每份文件单独指定页码，并按 1、2、4、6、9 页版式自动拼排。所有处理在本机离线完成，源文件不会被修改。
 
 ## 本地运行
 
@@ -10,9 +10,27 @@ D:\anaconda\python.exe -m venv .venv --system-site-packages
 .\.venv\Scripts\python.exe -m disclosure_pdf_scaler
 ```
 
+构建安装包前安装构建依赖，并将官方 Inno Setup 编译器放在 `tools/inno/`：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[build]"
+```
+
 ## 验证
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m mypy
+```
+
+真实测试文件集验收：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\acceptance_real_pdfs.py
+```
+
+构建 Windows 应用和安装包：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build.ps1
 ```

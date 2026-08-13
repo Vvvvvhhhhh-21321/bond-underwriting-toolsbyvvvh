@@ -4,6 +4,10 @@ __pycache__/
 .mypy_cache/
 tmp/
 output/
+build/
+dist/
+tools/
+*.spec
 *.py[cod]
 *.egg-info/
 测试文件集/
