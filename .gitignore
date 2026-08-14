@@ -44,6 +44,21 @@ output/
 temp/
 tmp/
 测试文件集/
+.pytest-tmp/
+.pytest-word/
+
+# Local agent state and project-only materials
+.claude/
+.codegraph/
+.scratch/
+.workbuddy/
+AGENTS.md
+CONTEXT.md
+docs/agents/
+openspec/
+bug素材合集/
+_debug_test.docx
+release/
 
 # Local configuration and secrets
 .env

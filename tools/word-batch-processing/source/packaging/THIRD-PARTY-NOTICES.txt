@@ -1,0 +1,37 @@
+Word 批量处理 2.0.1 — 第三方软件授权声明
+================================================
+
+本程序完全在本地运行，不包含遥测、文档上传或联网更新检查。
+
+本发行物包含或依赖以下第三方组件：
+
+1. Python
+   Copyright Python Software Foundation 及贡献者。
+   按 Python Software Foundation License 分发。
+
+2. PySide6、Shiboken6 与 Qt 6 动态库
+   Copyright The Qt Company Ltd. 及贡献者。
+   本发行物按 GNU Lesser General Public License version 3（LGPLv3）
+   的适用条款使用这些组件。LGPLv3 正文见同目录 COPYING.LESSER。
+   Qt 动态库以独立文件形式部署，用户可以在遵守兼容性和许可证条款的
+   前提下检查或替换这些库。本程序不限制对这些库进行许可证允许的调试。
+   项目与许可证信息：https://www.qt.io/licensing/
+
+3. pywin32
+   Copyright Mark Hammond 及贡献者。
+   按 Python Software Foundation License 兼容条款分发。
+
+4. psutil
+   Copyright Giampaolo Rodola 及贡献者。
+   按 BSD 3-Clause License 分发。
+
+5. python-docx
+   Copyright Steve Canny 及贡献者。
+   按 MIT License 分发。
+
+6. PyInstaller 引导程序
+   Copyright PyInstaller Development Team。
+   按 GPL 2.0-or-later 及 PyInstaller Bootloader Exception 分发；该例外
+   允许使用 PyInstaller 打包本程序而不改变本程序自身的许可证状态。
+
+各组件的商标和著作权归其各自权利人所有。本声明不授予任何商标许可。
