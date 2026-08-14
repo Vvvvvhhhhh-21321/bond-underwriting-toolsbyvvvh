@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Windows/.NET build output
+bin/
+obj/
+Debug/
+Release/
+x64/
+x86/
+
+# Build artifacts and installers
+dist/
+build/
+out/
+*.exe
+*.msi
+*.zip
+*.7z
+
+# Temporary and runtime files
+*.tmp
+*.temp
+*.log
+*.bak
+*.swp
+~$*
+inputs/
+outputs/
+temp/
+tmp/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
