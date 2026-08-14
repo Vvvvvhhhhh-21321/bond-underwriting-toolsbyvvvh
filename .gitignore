@@ -10,6 +10,7 @@ htmlcov/
 .venv/
 venv/
 env/
+*.egg-info/
 
 # Windows/.NET build output
 bin/
@@ -27,6 +28,8 @@ out/
 *.msi
 *.zip
 *.7z
+*.spec
+tools/inno/
 
 # Temporary and runtime files
 *.tmp
@@ -37,8 +40,10 @@ out/
 ~$*
 inputs/
 outputs/
+output/
 temp/
 tmp/
+测试文件集/
 
 # Local configuration and secrets
 .env
