@@ -1,36 +1,29 @@
-# 底稿pdf缩放打印工具
+# Vvvvvhhhhh-21321 的开发工具
 
-版本 1.0.2 支持批量添加 PDF、递归文件夹和拖放，为每份文件单独指定页码，并按 1、2、4、6、9 页版式自动拼排。所有处理在本机离线完成，源文件不会被修改。
+这是一个存放 Vvvvvhhhhh-21321 开发的工具的仓库，主要收录 Windows 桌面工具及其源码、使用说明和发布记录。
 
-## 本地运行
+## 工具清单
 
-```powershell
-D:\anaconda\python.exe -m venv .venv --system-site-packages
-.\.venv\Scripts\python.exe -m pip install -e .
-.\.venv\Scripts\python.exe -m disclosure_pdf_scaler
+- [底稿 PDF 缩放打印工具](tools/disclosure-pdf-scaler/README.md)：离线批量处理 PDF，支持递归文件夹、拖放、单文件页码和 1、2、4、6、9 页版式拼排，当前版本 1.0.2。
+
+## 目录结构
+
+```text
+tools/
+└─ <工具名称>/
+   ├─ README.md
+   └─ source/
 ```
 
-构建安装包前安装构建依赖，并将官方 Inno Setup 编译器放在 `tools/inno/`：
+`tools/<工具名称>/README.md` 说明工具用途、适用场景、输入输出、运行要求和版本变化。源码放在对应的 `source/` 目录中。
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".[build]"
-```
+## 发布约定
 
-## 验证
+- 源码和文档提交到仓库。
+- `.exe`、安装包和其他构建产物不直接提交到代码目录。
+- 可执行文件通过 GitHub Releases 发布，并在工具自己的 README 中记录下载和版本信息。
+- 发布前应确认不包含客户文件、项目底稿、凭据或其他敏感业务材料。
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m mypy
-```
+## 安全边界
 
-真实测试文件集验收：
-
-```powershell
-.\.venv\Scripts\python.exe scripts\acceptance_real_pdfs.py
-```
-
-构建 Windows 应用和安装包：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\build.ps1
-```
+本仓库用于保存工具本身，不用于保存债券项目原始材料、处理结果、客户数据、签署页或运行时临时文件。
