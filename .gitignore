@@ -39,6 +39,8 @@ inputs/
 outputs/
 temp/
 tmp/
+.pytest-tmp/
+.pytest-word/
 
 # Local configuration and secrets
 .env
@@ -50,3 +52,17 @@ tmp/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local agent state and project-only materials
+.claude/
+.codegraph/
+.scratch/
+.workbuddy/
+AGENTS.md
+CONTEXT.md
+docs/agents/
+openspec/
+bug素材合集/
+_debug_test.docx
+tools/upx-4.2.4-win64/
+release/
