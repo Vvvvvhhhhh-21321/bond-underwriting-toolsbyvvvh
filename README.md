@@ -5,6 +5,7 @@
 ## 工具清单
 
 - [底稿 PDF 缩放打印工具](tools/disclosure-pdf-scaler/README.md)：离线批量处理 PDF，支持递归文件夹、拖放、单文件页码和 1、2、4、6、9 页版式拼排，当前版本 1.0.2。
+- [Word 批量处理](tools/word-batch-processing/README.md)：面向 Windows 桌面版 Microsoft Word 的本地批量文档处理工具，当前版本 `2.0.1`。
 
 ## 目录结构
 
